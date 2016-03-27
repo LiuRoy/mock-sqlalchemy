@@ -1,5 +1,5 @@
 # -*- coding=utf8 -*-
-
+from functools import wraps
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -57,3 +57,23 @@ def drop_tables(tables):
             tables=[table_class.__table__]
         )
     return True
+
+
+def mock_deco(monkeypatch, session_list, table_list):
+    """
+    testcase装饰器, 在运行测试前创建表
+    """
+    def deco(func):
+        @wraps(func)
+        def _inner(*args, **kwargs):
+            create_tables(table_list)
+            for module, session in session_list:
+                monkeypatch.setattr(module, session, MockSession)
+
+            result = func(*args, **kwargs)
+            drop_tables(table_list)
+            return result
+
+        return _inner
+
+    return deco
